@@ -1,4 +1,4 @@
-name: Build Android ARMv7 .so (v11 - v10 source + proven 32-bit patches)
+name: Build Android ARMv7 .so (v12 - embed cross-file dependencies)
 
 on:
   workflow_dispatch:
@@ -11,19 +11,19 @@ jobs:
 
       - name: Verify source package exists
         run: |
-          if [ ! -f "LSCR-package-v10-android-datadir.zip" ]; then
-            echo "ERROR: LSCR-package-v10-android-datadir.zip not found in repository root!"
-            echo "Please upload LSCR-package-v10-android-datadir.zip to the repo root."
+          if [ ! -f "LSCR-package-v12-embed-deps.zip" ]; then
+            echo "ERROR: LSCR-package-v12-embed-deps.zip not found in repository root!"
+            echo "Please upload LSCR-package-v12-embed-deps.zip to the repo root."
             ls -la *.zip 2>/dev/null || echo "No ZIP files found."
             exit 1
           fi
-          echo "OK: Found LSCR-package-v10-android-datadir.zip ($(stat -c%s LSCR-package-v10-android-datadir.zip) bytes)"
-          echo "MD5: $(md5sum LSCR-package-v10-android-datadir.zip | cut -d' ' -f1)"
+          echo "OK: Found LSCR-package-v12-embed-deps.zip ($(stat -c%s LSCR-package-v12-embed-deps.zip) bytes)"
+          echo "MD5: $(md5sum LSCR-package-v12-embed-deps.zip | cut -d' ' -f1)"
 
       - name: Unzip source package
         run: |
           rm -rf LSCR-package
-          unzip -o "LSCR-package-v10-android-datadir.zip" -d .
+          unzip -o "LSCR-package-v12-embed-deps.zip" -d .
           echo "ZIP extracted. Contents:"
           ls -la LSCR-package/
           echo "=== unity-scene-repacker/src/ ==="
@@ -58,6 +58,24 @@ jobs:
             echo "OK: game_files.rs contains android Data-dir probe"
           else
             echo "FATAL: game_files.rs missing android Data-dir probe (v10)!"
+            exit 1
+          fi
+
+          echo "=== Checking embed-deps module (v12) ==="
+          if [ ! -f "LSCR-package/unity-scene-repacker/src/embed_deps.rs" ]; then
+            echo "FATAL: embed_deps.rs is MISSING from the ZIP!"
+            exit 1
+          fi
+          if grep -q "replace_pptrs_resolver_endianed" LSCR-package/rabex-env/src/trace_pptr.rs; then
+            echo "OK: trace_pptr.rs contains resolver-based PPtr rewrite"
+          else
+            echo "FATAL: trace_pptr.rs missing replace_pptrs_resolver_endianed (v12)!"
+            exit 1
+          fi
+          if grep -q "collect_embedded_deps" LSCR-package/unity-scene-repacker/src/lib.rs; then
+            echo "OK: lib.rs wires phase 1b (collect_embedded_deps)"
+          else
+            echo "FATAL: lib.rs missing phase 1b wiring (v12)!"
             exit 1
           fi
 
@@ -263,5 +281,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: libunityscenerepacker-armv7-v11
+          name: libunityscenerepacker-armv7-v12
           path: libunityscenerepacker.so
