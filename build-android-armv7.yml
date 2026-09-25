@@ -1,0 +1,267 @@
+name: Build Android ARMv7 .so (v11 - v10 source + proven 32-bit patches)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-armv7:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify source package exists
+        run: |
+          if [ ! -f "LSCR-package-v10-android-datadir.zip" ]; then
+            echo "ERROR: LSCR-package-v10-android-datadir.zip not found in repository root!"
+            echo "Please upload LSCR-package-v10-android-datadir.zip to the repo root."
+            ls -la *.zip 2>/dev/null || echo "No ZIP files found."
+            exit 1
+          fi
+          echo "OK: Found LSCR-package-v10-android-datadir.zip ($(stat -c%s LSCR-package-v10-android-datadir.zip) bytes)"
+          echo "MD5: $(md5sum LSCR-package-v10-android-datadir.zip | cut -d' ' -f1)"
+
+      - name: Unzip source package
+        run: |
+          rm -rf LSCR-package
+          unzip -o "LSCR-package-v10-android-datadir.zip" -d .
+          echo "ZIP extracted. Contents:"
+          ls -la LSCR-package/
+          echo "=== unity-scene-repacker/src/ ==="
+          ls -la LSCR-package/unity-scene-repacker/src/
+
+      - name: Verify critical source files
+        run: |
+          echo "=== Checking batched_cache.rs ==="
+          if [ ! -f "LSCR-package/unity-scene-repacker/src/batched_cache.rs" ]; then
+            echo "FATAL: batched_cache.rs is MISSING from the ZIP!"
+            exit 1
+          fi
+          echo "OK: batched_cache.rs exists ($(stat -c%s LSCR-package/unity-scene-repacker/src/batched_cache.rs) bytes)"
+
+          echo "=== Checking export_batched in bindings ==="
+          if grep -q "export_batched" LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
+            echo "OK: bindings/src/lib.rs contains export_batched"
+          else
+            echo "FATAL: bindings/src/lib.rs missing export_batched!"
+            exit 1
+          fi
+
+          echo "=== Checking PPtr fix in trace_pptr.rs ==="
+          if grep -q "FIX: PPtr points to pruned object" LSCR-package/rabex-env/src/trace_pptr.rs; then
+            echo "OK: trace_pptr.rs contains PPtr fix (null-out dangling refs)"
+          else
+            echo "WARNING: trace_pptr.rs missing PPtr fix - may produce corrupted bundle"
+          fi
+
+          echo "=== Checking android Data-dir probe (v10) ==="
+          if grep -q "fn android_data_dir" LSCR-package/rabex-env/src/resolver/game_files.rs; then
+            echo "OK: game_files.rs contains android Data-dir probe"
+          else
+            echo "FATAL: game_files.rs missing android Data-dir probe (v10)!"
+            exit 1
+          fi
+
+          echo "=== All source verifications passed ==="
+
+      - name: Install Rust
+        run: |
+          rustup --version
+          rustup target add armv7-linux-androideabi
+
+      - name: Install Android NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+          link-to-sdk: true
+
+      - name: Configure Cargo
+        run: |
+          mkdir -p ~/.cargo
+          echo "[target.armv7-linux-androideabi]" > ~/.cargo/config.toml
+          LINKER=$(find $ANDROID_NDK_HOME -name armv7a-linux-androideabi21-clang | head -1)
+          echo "Found linker: $LINKER"
+          echo 'linker = "'$LINKER'"' >> ~/.cargo/config.toml
+          cat ~/.cargo/config.toml
+
+      - name: Fetch dependencies
+        run: |
+          cd LSCR-package/unity-scene-repacker
+          cargo fetch
+
+      - name: Patch ALL for 32-bit ARM + Android platform fix
+        run: |
+          python3 << 'PYEOF'
+          import os, re
+
+          def find_file(base, keyword, filename):
+              for root, dirs, files in os.walk(os.path.expanduser(base)):
+                  if keyword in root and filename in files:
+                      return os.path.join(root, filename)
+              return None
+
+          def find_file_recursive(base, filename):
+              """Search for a file in all subdirectories."""
+              for root, dirs, files in os.walk(os.path.expanduser(base)):
+                  if filename in files:
+                      return os.path.join(root, filename)
+              return None
+
+          # ===== 1. typetree-generator-api =====
+          path = find_file("~/.cargo/git/checkouts", "typetree-generator-api", "generated.rs")
+          if path:
+              print(f"[1] Cleaning {path}")
+              with open(path, 'r') as f:
+                  content = f.read()
+              orig_len = len(content)
+              content = re.sub(r'const\s+_\s*:\s*\(\)\s*=\s*\{[^{}]*\};', '', content, flags=re.DOTALL)
+              lines = content.split('\n')
+              result = []
+              for line in lines:
+                  if '::std::mem::' in line:
+                      continue
+                  s = line.strip()
+                  if re.match(r'^\["[^"]+"\]$', s):
+                      continue
+                  result.append(line)
+              content = '\n'.join(result)
+              with open(path, 'w') as f:
+                  f.write(content)
+              print(f"    {orig_len} -> {len(content)} chars")
+          else:
+              print("[!] WARNING: generated.rs not found!")
+
+          # ===== 2. dotnetdll table.rs =====
+          path = find_file("~/.cargo/registry/src", "dotnetdll", "table.rs")
+          if path:
+              print(f"[2] Patching {path}")
+              with open(path, 'r') as f:
+                  content = f.read()
+              content = re.sub(
+                  r'(pub fn valid_mask\(&self\) -> u64 \{)\s*let mut mask = 0;',
+                  r'\1\n        let mut mask = 0usize;',
+                  content
+              )
+              content = re.sub(
+                  r'(pub fn sorted_mask\(\) -> u64 \{)\s*let mut mask = 0;',
+                  r'\1\n        let mut mask = 0usize;',
+                  content
+              )
+              content = re.sub(
+                  r'(pub fn valid_mask\(&self\) -> u64 \{[\s\S]*?)\n(\s+)mask\n(\s+)\}',
+                  r'\1\n\2mask as u64\n\3}',
+                  content
+              )
+              content = re.sub(
+                  r'(pub fn sorted_mask\(\) -> u64 \{[\s\S]*?)\n(\s+)mask\n(\s+)\}',
+                  r'\1\n\2mask as u64\n\3}',
+                  content
+              )
+              with open(path, 'w') as f:
+                  f.write(content)
+              print("    table.rs patched")
+          else:
+              print("[!] WARNING: table.rs not found!")
+
+          # ===== 3. dotnetdll header.rs =====
+          path = find_file("~/.cargo/registry/src", "dotnetdll", "header.rs")
+          if path:
+              print(f"[3] Patching {path}")
+              with open(path, 'r') as f:
+                  content = f.read()
+              content = content.replace(
+                  'for (num, exists) in valid.view_bits::<Lsb0>().into_iter().enumerate() {',
+                  'let valid_usize = valid as usize;\n        for (num, exists) in valid_usize.view_bits::<Lsb0>().into_iter().enumerate() {'
+              )
+              with open(path, 'w') as f:
+                  f.write(content)
+              print("    header.rs patched")
+          else:
+              print("[!] WARNING: header.rs not found!")
+
+          # ===== 4. rabex-env: accept "Data" directory =====
+          path = find_file("~/.cargo/git/checkouts", "rabex-env", "game_files.rs")
+          if path:
+              print(f"[4] Patching {path}")
+              with open(path, 'r') as f:
+                  content = f.read()
+              content = content.replace(
+                  'name.ends_with("_Data")',
+                  'name.ends_with("_Data") || name.ends_with("Data")'
+              )
+              with open(path, 'w') as f:
+                  f.write(content)
+              print("    game_files.rs patched")
+          else:
+              print("[!] WARNING: game_files.rs not found!")
+
+          # ===== 5. rabex serializedfile/builder.rs -- fix hardcoded Linux64 platform -> Android =====
+          path = None
+          for base in ["~/.cargo/registry/src", "~/.cargo/git/checkouts"]:
+              for root, dirs, files in os.walk(os.path.expanduser(base)):
+                  if "builder.rs" in files and "serializedfile" in root:
+                      path = os.path.join(root, "builder.rs")
+                      break
+              if path:
+                  break
+
+          if path and os.path.exists(path):
+              print(f"[5] Patching {path}")
+              with open(path, 'r') as f:
+                  content = f.read()
+              if 'Some(24)' in content:
+                  content = content.replace('Some(24)', 'Some(13)')
+                  with open(path, 'w') as f:
+                      f.write(content)
+                  print("    SUCCESS: m_TargetPlatform Some(24) -> Some(13) (Android)")
+              elif 'Some(13)' in content:
+                  print("    SKIP: already patched (Some(13) found, no Some(24))")
+              else:
+                  print("    WARNING: neither Some(24) nor Some(13) found - manual check needed")
+                  for i, line in enumerate(content.split('\n')):
+                      if 'm_TargetPlatform' in line or 'TargetPlatform' in line:
+                          print(f"    Line {i+1}: {line.strip()}")
+          else:
+              print("[!] WARNING: rabex serializedfile/builder.rs not found!")
+              print("    Searching all builder.rs files in cargo dirs...")
+              for base in ["~/.cargo/registry/src", "~/.cargo/git/checkouts"]:
+                  for root, dirs, files in os.walk(os.path.expanduser(base)):
+                      if "builder.rs" in files and "rabex" in root.lower():
+                          print(f"    Found: {os.path.join(root, 'builder.rs')}")
+
+          print("[+] All patches applied")
+          PYEOF
+
+      - name: Build bindings crate
+        run: |
+          cd LSCR-package/unity-scene-repacker
+          echo "=== Pre-build: Force cargo to rebuild rabex-env ==="
+          cargo clean -p rabex-env 2>/dev/null || true
+          echo "=== Building bindings crate for armv7-android ==="
+          cargo build -p bindings --target armv7-linux-androideabi --release 2>&1
+          BUILD_EXIT=$?
+          if [ $BUILD_EXIT -ne 0 ]; then
+            echo "FATAL: cargo build failed with exit code $BUILD_EXIT"
+            exit 1
+          fi
+          # Verify .so was produced
+          SO_PATH="target/armv7-linux-androideabi/release/libunityscenerepacker.so"
+          if [ ! -f "$SO_PATH" ]; then
+            echo "FATAL: .so not found at $SO_PATH"
+            ls -la target/armv7-linux-androideabi/release/ 2>/dev/null || echo "release dir not found"
+            exit 1
+          fi
+          echo "=== Build successful ==="
+          echo ".so size: $(stat -c%s $SO_PATH) bytes"
+          echo ".so MD5: $(md5sum $SO_PATH | cut -d' ' -f1)"
+          echo "=== HASH VERIFICATION ==="
+          echo "Compare this MD5 with your previous .so"
+          echo "If identical, the fix was NOT compiled into this build."
+          echo "=== Copying artifact ==="
+          cp "$SO_PATH" ../../libunityscenerepacker.so
+          echo "Copied to repo root. Final size: $(stat -c%s ../../libunityscenerepacker.so) bytes"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libunityscenerepacker-armv7-v11
+          path: libunityscenerepacker.so
