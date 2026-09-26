@@ -1,0 +1,65 @@
+name: Build Enemy Randomizer dlls (64-bit port fix)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-er64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify source package exists
+        run: |
+          if [ ! -f "ER64-package.zip" ]; then
+            echo "ERROR: ER64-package.zip not found in repository root!"
+            echo "Please upload ER64-package.zip to the repo root."
+            ls -la *.zip 2>/dev/null || echo "No ZIP files found."
+            exit 1
+          fi
+          echo "OK: Found ER64-package.zip ($(stat -c%s ER64-package.zip) bytes)"
+          echo "MD5: $(md5sum ER64-package.zip | cut -d' ' -f1)"
+
+      - name: Unzip source package
+        run: |
+          rm -rf ER64-package
+          unzip -q -o "ER64-package.zip" -d .
+          echo "ZIP extracted. Contents:"
+          ls -la ER64-package/
+          echo "=== refs count ==="
+          ls ER64-package/refs/ | wc -l
+          echo "=== src cs count ==="
+          find ER64-package/src -name '*.cs' | wc -l
+
+      - name: Verify critical files
+        run: |
+          for f in build.sh src/EnemyRandomizer/Mod/EnemyRandomizer.cs src/EnemyRandomizerDB/Library/DatabaseAPI.cs refs/Assembly-CSharp.dll refs/Satchel.dll; do
+            if [ ! -f "ER64-package/$f" ]; then
+              echo "FATAL: $f is MISSING from the ZIP!"
+              exit 1
+            fi
+          done
+          echo "OK: all critical files present"
+          grep -n "persistentDataPath" ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizer.cs | head -3 || { echo "FATAL: path fallback patch missing"; exit 1; }
+
+      - name: Compile with Roslyn (dotnet SDK csc)
+        run: |
+          cd ER64-package
+          bash build.sh
+
+      - name: Verify output markers
+        run: |
+          cd ER64-package
+          for d in out/EnemyRandomizer.dll out/EnemyRandomizerDB.dll; do
+            [ -f "$d" ] || { echo "FATAL: $d not produced"; exit 1; }
+            echo "$d : $(stat -c%s $d) bytes"
+          done
+          strings out/EnemyRandomizer.dll | grep -c "64a" || { echo "FATAL: version marker missing"; exit 1; }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ER64-dlls
+          path: |
+            ER64-package/out/EnemyRandomizer.dll
+            ER64-package/out/EnemyRandomizerDB.dll
