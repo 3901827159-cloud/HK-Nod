@@ -42,9 +42,10 @@ jobs:
           echo "OK: all critical files present"
           grep -n "persistentDataPath" ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizer.cs | head -3 || { echo "FATAL: path fallback patch missing"; exit 1; }
           grep -n "Split(new char" ER64-package/src/CrashRecorder/CrashRecorder.cs || { echo "FATAL: 64-bit Split fix missing"; exit 1; }
+          grep -n "logMessageReceivedThreaded" ER64-package/src/CrashRecorder/CrashRecorder.cs || { echo "FATAL: CrashRecorder missing managed sink (v6-64+)"; exit 1; }
           grep -n "bridge.cfg" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing config-handoff (gen-10+)"; exit 1; }
-          grep -n "On.Modding.Preloader" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing preload loop-breaker (gen-12+)"; exit 1; }
-          grep -n "loop-breaker armed" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing loop-breaker marker (gen-12+)"; exit 1; }
+          grep -n "embed-deps:" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing breadcrumb parser (gen-14+)"; exit 1; }
+          grep -n "export_diag.txt" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing failure-state detection (gen-14+)"; exit 1; }
 
       - name: Compile with Roslyn (dotnet SDK csc)
         run: |
@@ -59,7 +60,7 @@ jobs:
             echo "$d : $(stat -c%s $d) bytes"
           done
           strings -el out/EnemyRandomizer.dll | grep -c "64a" || { echo "FATAL: ER version marker missing"; exit 1; }
-          strings -el out/CrashRecorder.dll | grep -c "v5-64" || { echo "FATAL: CR version marker missing"; exit 1; }
+          strings -el out/CrashRecorder.dll | grep -c "v6-64" || { echo "FATAL: CR version marker missing"; exit 1; }
           strings -el out/RepackBridge64.dll | grep -c "RepackBridge64 v3" || { echo "FATAL: bridge marker missing"; exit 1; }
 
       - name: Upload artifact
