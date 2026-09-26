@@ -97,6 +97,27 @@ jobs:
             exit 1
           fi
 
+          echo "=== Checking v13.5 embedded typetree dump (file + include path must agree) ==="
+          if [ ! -f "LSCR-package/unity-scene-repacker/bindings/mb_typetree_dump.lz4" ]; then
+            echo "FATAL: bindings/mb_typetree_dump.lz4 is MISSING from the ZIP!"
+            exit 1
+          fi
+          echo "OK: mb_typetree_dump.lz4 present ($(stat -c%s LSCR-package/unity-scene-repacker/bindings/mb_typetree_dump.lz4) bytes)"
+          if grep -q 'include_bytes!("../mb_typetree_dump.lz4")' LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
+            echo "OK: include_bytes path matches file location"
+          else
+            echo "FATAL: include_bytes path does not match mb_typetree_dump.lz4 location!"
+            exit 1
+          fi
+          for sym in install_dump_provider JNI_OnLoad lscr_dump_stub build_managed_byte_array; do
+            if grep -q "$sym" LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
+              echo "OK: bindings contains $sym"
+            else
+              echo "FATAL: bindings/src/lib.rs missing $sym!"
+              exit 1
+            fi
+          done
+
           echo "=== All source verifications passed ==="
 
       - name: Install Rust
