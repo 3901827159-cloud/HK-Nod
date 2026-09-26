@@ -42,7 +42,7 @@ jobs:
           echo "OK: all critical files present"
           grep -n "persistentDataPath" ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizer.cs | head -3 || { echo "FATAL: path fallback patch missing"; exit 1; }
           grep -n "Split(new char" ER64-package/src/CrashRecorder/CrashRecorder.cs || { echo "FATAL: 64-bit Split fix missing"; exit 1; }
-          grep -n "install_scene_redirect" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing redirect"; exit 1; }
+          grep -n "bridge.cfg" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing config-handoff (gen-10+)"; exit 1; }
 
       - name: Compile with Roslyn (dotnet SDK csc)
         run: |
