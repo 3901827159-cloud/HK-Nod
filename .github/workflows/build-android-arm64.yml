@@ -80,6 +80,12 @@ jobs:
           fi
 
           echo "=== Checking v13 cache layer + redirect in bindings ==="
+          if grep -q '\$values' LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
+            echo "OK: bindings unwraps Newtonsoft \$values wrapper (v13.8)"
+          else
+            echo "FATAL: bindings missing \$values unwrap (v13.8+)!"
+            exit 1
+          fi
           for sym in set_cache_dir install_scene_redirect export_cached parse_scene_objects_lenient write_export_diag; do
             if grep -q "$sym" LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
               echo "OK: bindings contains $sym"
@@ -323,6 +329,25 @@ jobs:
           echo "=== Copying artifact ==="
           cp "$SO_PATH" ../../libunityscenerepacker.so
           echo "Copied to repo root. Final size: $(stat -c%s ../../libunityscenerepacker.so) bytes"
+
+      - name: In-cloud binary autopsy (symbol whitelist + undefined blacklist)
+        run: |
+          SO=$(find . -name 'libunityscenerepacker.so' | head -1)
+          echo "autopsy target: $SO ($(stat -c%s $SO) bytes)"
+          for sym in export export_batched free_str free_array set_cache_dir install_scene_redirect JNI_OnLoad lscr_dump_stub; do
+            if readelf --dyn-syms -W "$SO" | grep -qE "FUNC +GLOBAL +DEFAULT +[0-9]+ +${sym}$"; then
+              echo "OK export: $sym"
+            else
+              echo "FATAL: missing export symbol $sym"
+              exit 1
+            fi
+          done
+          if readelf --dyn-syms -W "$SO" | grep -qE " +UND +__clear_cache$"; then
+            echo "FATAL: undefined symbol __clear_cache (bionic does not export it; dlopen will refuse)"
+            exit 1
+          fi
+          echo "OK: no __clear_cache undefined reference"
+          echo "in-cloud autopsy PASS"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
