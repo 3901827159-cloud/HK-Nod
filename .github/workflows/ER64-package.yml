@@ -58,7 +58,7 @@ jobs:
           done
           strings -el out/EnemyRandomizer.dll | grep -c "64a" || { echo "FATAL: ER version marker missing"; exit 1; }
           strings -el out/CrashRecorder.dll | grep -c "v5-64" || { echo "FATAL: CR version marker missing"; exit 1; }
-          strings -el out/RepackBridge64.dll | grep -c "RepackBridge64 v1" || { echo "FATAL: bridge marker missing"; exit 1; }
+          strings -el out/RepackBridge64.dll | grep -c "RepackBridge64 v2" || { echo "FATAL: bridge marker missing"; exit 1; }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
