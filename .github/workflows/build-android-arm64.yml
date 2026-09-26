@@ -89,6 +89,13 @@ jobs:
             fi
           done
 
+          echo "=== Checking v13.7 static-init sanity (E0015 guard) ==="
+          if grep -q "Mutex::new(std::collections::HashMap::new())" LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
+            echo "FATAL: non-const HashMap::new() in static (E0015)!"
+            exit 1
+          fi
+          echo "OK: no E0015 static-init pattern"
+
           echo "=== Checking v13 bucket-queue fix in embed_deps.rs ==="
           if grep -q "buckets" LSCR-package/unity-scene-repacker/src/embed_deps.rs; then
             echo "OK: embed_deps.rs uses per-file buckets (no O(n^2) scan)"
