@@ -102,6 +102,19 @@ jobs:
           fi
           echo "OK: no E0015 static-init pattern"
 
+          if grep -q "resolve_game_dir" LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
+            echo "OK: game-dir resolver (v13.10)"
+          else
+            echo "FATAL: bindings missing game-dir resolver (v13.10+)!"
+            exit 1
+          fi
+          if grep -q "looks_like_unity_data" LSCR-package/rabex-env/src/resolver/game_files.rs; then
+            echo "OK: android data-dir lattice probe (v13.9)"
+          else
+            echo "FATAL: rabex-env missing lattice probe (v13.9+)!"
+            exit 1
+          fi
+
           echo "=== Checking v13 bucket-queue fix in embed_deps.rs ==="
           if grep -q "buckets" LSCR-package/unity-scene-repacker/src/embed_deps.rs; then
             echo "OK: embed_deps.rs uses per-file buckets (no O(n^2) scan)"
