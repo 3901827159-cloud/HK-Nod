@@ -80,11 +80,11 @@ jobs:
           fi
 
           echo "=== Checking v13 cache layer + redirect in bindings ==="
-          for sym in set_cache_dir install_scene_redirect export_cached; do
+          for sym in set_cache_dir install_scene_redirect export_cached parse_scene_objects_lenient write_export_diag; do
             if grep -q "$sym" LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
               echo "OK: bindings contains $sym"
             else
-              echo "FATAL: bindings/src/lib.rs missing $sym (v13)!"
+              echo "FATAL: bindings/src/lib.rs missing $sym (v13/v13.6)!"
               exit 1
             fi
           done
