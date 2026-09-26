@@ -46,6 +46,7 @@ jobs:
           grep -n "bridge.cfg" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing config-handoff (gen-10+)"; exit 1; }
           grep -n "embed-deps:" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing breadcrumb parser (gen-14+)"; exit 1; }
           grep -n "export_diag.txt" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing failure-state detection (gen-14+)"; exit 1; }
+          grep -n "layout top:" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing layout stethoscope (gen-16+)"; exit 1; }
 
       - name: Compile with Roslyn (dotnet SDK csc)
         run: |
