@@ -33,7 +33,7 @@ jobs:
 
       - name: Verify critical files
         run: |
-          for f in build.sh src/EnemyRandomizer/Mod/EnemyRandomizer.cs src/EnemyRandomizerDB/Library/DatabaseAPI.cs src/CrashRecorder/CrashRecorder.cs refs/Assembly-CSharp.dll refs/Satchel.dll; do
+          for f in build.sh src/EnemyRandomizer/Mod/EnemyRandomizer.cs src/EnemyRandomizerDB/Library/DatabaseAPI.cs src/CrashRecorder/CrashRecorder.cs src/RepackBridge/RepackBridge64.cs refs/Assembly-CSharp.dll refs/Satchel.dll; do
             if [ ! -f "ER64-package/$f" ]; then
               echo "FATAL: $f is MISSING from the ZIP!"
               exit 1
@@ -42,6 +42,7 @@ jobs:
           echo "OK: all critical files present"
           grep -n "persistentDataPath" ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizer.cs | head -3 || { echo "FATAL: path fallback patch missing"; exit 1; }
           grep -n "Split(new char" ER64-package/src/CrashRecorder/CrashRecorder.cs || { echo "FATAL: 64-bit Split fix missing"; exit 1; }
+          grep -n "install_scene_redirect" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing redirect"; exit 1; }
 
       - name: Compile with Roslyn (dotnet SDK csc)
         run: |
@@ -51,12 +52,13 @@ jobs:
       - name: Verify output markers
         run: |
           cd ER64-package
-          for d in out/EnemyRandomizer.dll out/EnemyRandomizerDB.dll out/CrashRecorder.dll; do
+          for d in out/EnemyRandomizer.dll out/EnemyRandomizerDB.dll out/CrashRecorder.dll out/RepackBridge64.dll; do
             [ -f "$d" ] || { echo "FATAL: $d not produced"; exit 1; }
             echo "$d : $(stat -c%s $d) bytes"
           done
           strings -el out/EnemyRandomizer.dll | grep -c "64a" || { echo "FATAL: ER version marker missing"; exit 1; }
           strings -el out/CrashRecorder.dll | grep -c "v5-64" || { echo "FATAL: CR version marker missing"; exit 1; }
+          strings -el out/RepackBridge64.dll | grep -c "RepackBridge64 v1" || { echo "FATAL: bridge marker missing"; exit 1; }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -66,3 +68,4 @@ jobs:
             ER64-package/out/EnemyRandomizer.dll
             ER64-package/out/EnemyRandomizerDB.dll
             ER64-package/out/CrashRecorder.dll
+            ER64-package/out/RepackBridge64.dll
