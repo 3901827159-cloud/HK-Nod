@@ -173,7 +173,7 @@ jobs:
           if grep -n "builder.write(&mut f)" LSCR-package/unity-scene-repacker/src/lib.rs; then
             echo "FATAL: phase-2 still uses the RAM-doubling stock writer!"; exit 1
           fi
-          if grep -q "v13.14 cache MISS" LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
+          if grep -q "v13.15 cache MISS" LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
             echo "OK: bindings v13.14 marker present"
           else
             echo "FATAL: bindings missing v13.14 marker!"; exit 1
@@ -355,6 +355,14 @@ jobs:
           echo "=== Pre-build: Force cargo to rebuild rabex-env ==="
           cargo clean -p rabex-env 2>/dev/null || true
           echo "=== Building bindings crate for arm64-android ==="
+          # v13.15: SONAME is the linchpin of the loose-.so route. The bridge
+          # System.load()s the internal copy by full path; the API's P/Invoke
+          # then dlopens the BARE name, and the linker only matches loaded
+          # libs by SONAME. Without it the bare-name dlopen falls through to
+          # the apk-baked old lib and a second (stale) instance does the work
+          # — observed on device 2026-09-27 (silent old phase 2 behind a
+          # v13.14 load receipt).
+          export RUSTFLAGS="-C link-arg=-Wl,-soname,libunityscenerepacker.so"
           cargo build -p bindings --target aarch64-linux-android --release 2>&1
           BUILD_EXIT=$?
           if [ $BUILD_EXIT -ne 0 ]; then
@@ -382,6 +390,11 @@ jobs:
         run: |
           SO=$(find . -name 'libunityscenerepacker.so' | head -1)
           echo "autopsy target: $SO ($(stat -c%s $SO) bytes)"
+          if readelf -d "$SO" | grep -q "SONAME.*libunityscenerepacker.so"; then
+            echo "OK: SONAME present (loose-.so bare-name dlopen will hit the loaded instance)"
+          else
+            echo "FATAL: .so has no SONAME - the API would dlopen a second stale instance from the APK!"; exit 1
+          fi
           for sym in export export_batched free_str free_array set_cache_dir install_scene_redirect JNI_OnLoad lscr_dump_stub; do
             if readelf --dyn-syms -W "$SO" | grep -qE "FUNC +GLOBAL +DEFAULT +[0-9]+ +${sym}$"; then
               echo "OK export: $sym"
