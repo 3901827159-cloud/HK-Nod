@@ -144,6 +144,41 @@ jobs:
             fi
           done
 
+          echo "=== Checking v13.14 streaming phase-2 (local rabex pin + disk-backed writers + breadcrumbs) ==="
+          if grep -q 'rabex = { path = "../rabex" }' LSCR-package/unity-scene-repacker/Cargo.toml; then
+            echo "OK: rabex pinned to local vendored copy (patch.crates-io)"
+          else
+            echo "FATAL: rabex path pin missing from Cargo.toml - the v13.14 streaming writers would NOT compile into the .so!"; exit 1
+          fi
+          if grep -q "write_serialized_with_disk_objects" LSCR-package/rabex/src/files/serializedfile/mod.rs; then
+            echo "OK: streaming serialized writer present"
+          else
+            echo "FATAL: write_serialized_with_disk_objects missing from vendored rabex!"; exit 1
+          fi
+          if grep -q "write_bundle_stream_none" LSCR-package/rabex/src/files/bundlefile/mod.rs; then
+            echo "OK: streaming bundle writer present"
+          else
+            echo "FATAL: write_bundle_stream_none missing from vendored rabex!"; exit 1
+          fi
+          if grep -q "serialize_object_at" LSCR-package/rabex/src/files/serializedfile/builder.rs; then
+            echo "OK: builder serialize-without-store helper present"
+          else
+            echo "FATAL: serialize_object_at missing from vendored rabex builder!"; exit 1
+          fi
+          if grep -q "phase2: scenes" LSCR-package/unity-scene-repacker/src/lib.rs && grep -q "objects_data.tmp" LSCR-package/unity-scene-repacker/src/lib.rs; then
+            echo "OK: phase-2 breadcrumbs + disk-backed accumulation present"
+          else
+            echo "FATAL: phase-2 streaming rewrite missing from repacker lib.rs!"; exit 1
+          fi
+          if grep -n "builder.write(&mut f)" LSCR-package/unity-scene-repacker/src/lib.rs; then
+            echo "FATAL: phase-2 still uses the RAM-doubling stock writer!"; exit 1
+          fi
+          if grep -q "v13.14 cache MISS" LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
+            echo "OK: bindings v13.14 marker present"
+          else
+            echo "FATAL: bindings missing v13.14 marker!"; exit 1
+          fi
+
           echo "=== All source verifications passed ==="
 
       - name: Install Rust
