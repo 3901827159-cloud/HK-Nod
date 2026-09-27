@@ -66,6 +66,8 @@ jobs:
           grep -n "pkill -f 'logcat -v tim\[e\]'" ER64-package/src/CrashRecorder/CrashRecorder.cs || { echo "FATAL: v9-64 targeted pkill form missing"; exit 1; }
           grep -n "work-\*" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing work-dir progress scan (v3.9)"; exit 1; }
           grep -n "phase2:" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing phase2 breadcrumb parsing (v3.9)"; exit 1; }
+          grep -n "internal-copy" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing internal-dir load hop (v3.10, Android 10 namespace fix)"; exit 1; }
+          grep -n "getCodeCacheDir" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing code-cache fallback dir (v3.10)"; exit 1; }
           grep -n "bridge.cfg" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing config-handoff (gen-10+)"; exit 1; }
           grep -n "embed-deps:" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing breadcrumb parser (gen-14+)"; exit 1; }
           grep -n "export_diag.txt" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing failure-state detection (gen-14+)"; exit 1; }
