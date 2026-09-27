@@ -173,10 +173,15 @@ jobs:
           if grep -n "builder.write(&mut f)" LSCR-package/unity-scene-repacker/src/lib.rs; then
             echo "FATAL: phase-2 still uses the RAM-doubling stock writer!"; exit 1
           fi
-          if grep -q "v13.15 cache MISS" LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
-            echo "OK: bindings v13.14 marker present"
+          if grep -q "v13.16 cache MISS" LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
+            echo "OK: bindings v13.16 marker present"
           else
-            echo "FATAL: bindings missing v13.14 marker!"; exit 1
+            echo "FATAL: bindings missing v13.16 marker!"; exit 1
+          fi
+          if grep -q "live.log" LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
+            echo "OK: live.log narration present (v13.16)"
+          else
+            echo "FATAL: bindings missing live.log narration (v13.16)!"; exit 1
           fi
 
           echo "=== All source verifications passed ==="
