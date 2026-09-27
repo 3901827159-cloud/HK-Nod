@@ -60,6 +60,12 @@ jobs:
           fi
           echo "OK: music hooks not installed (v3.8)"
           grep -n "logcat -d -v time >" ER64-package/src/CrashRecorder/CrashRecorder.cs || { echo "FATAL: snapshot leg command regression (v8-64 fixed form missing)"; exit 1; }
+          if grep -n "pkill -x logcat" ER64-package/src/CrashRecorder/CrashRecorder.cs | grep -v ':[[:space:]]*//'; then
+            echo "FATAL: CrashRecorder still uses broad pkill that killed the snapshot leg (v9-64 fixed it)!"; exit 1
+          fi
+          grep -n "pkill -f 'logcat -v tim\[e\]'" ER64-package/src/CrashRecorder/CrashRecorder.cs || { echo "FATAL: v9-64 targeted pkill form missing"; exit 1; }
+          grep -n "work-\*" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing work-dir progress scan (v3.9)"; exit 1; }
+          grep -n "phase2:" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing phase2 breadcrumb parsing (v3.9)"; exit 1; }
           grep -n "bridge.cfg" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing config-handoff (gen-10+)"; exit 1; }
           grep -n "embed-deps:" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing breadcrumb parser (gen-14+)"; exit 1; }
           grep -n "export_diag.txt" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing failure-state detection (gen-14+)"; exit 1; }
@@ -78,7 +84,7 @@ jobs:
             echo "$d : $(stat -c%s $d) bytes"
           done
           strings -el out/EnemyRandomizer.dll | grep -c "64a" || { echo "FATAL: ER version marker missing"; exit 1; }
-          strings -el out/CrashRecorder.dll | grep -c "v8-64" || { echo "FATAL: CR version marker missing"; exit 1; }
+          strings -el out/CrashRecorder.dll | grep -c "v9-64" || { echo "FATAL: CR version marker missing"; exit 1; }
           strings -el out/RepackBridge64.dll | grep -c "RepackBridge64 v3" || { echo "FATAL: bridge marker missing"; exit 1; }
 
       - name: Upload artifact
