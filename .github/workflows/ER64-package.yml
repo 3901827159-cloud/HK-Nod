@@ -76,6 +76,11 @@ jobs:
           grep -n "fallback close" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.11 fallback close"; exit 1; }
           grep -n "pour-fill" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.11 pour-fill bar"; exit 1; }
           grep -n "KillPortBar" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.12 port-bar killer"; exit 1; }
+          if [ "$(grep -c 'LSCR-NULLGUARD-24' ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizer.cs)" -ge 4 ]; then
+            echo "OK: ER null-self guards present (24th gen)"
+          else
+            echo "FATAL: ER missing LSCR-NULLGUARD-24 guards (need >=4)!"; exit 1
+          fi
           grep -n "EnsureGameData" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.14 APK self-extraction"; exit 1; }
           grep -n "assets/bin/Data/" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.14 apk data prefix"; exit 1; }
 
