@@ -173,20 +173,25 @@ jobs:
           if grep -n "builder.write(&mut f)" LSCR-package/unity-scene-repacker/src/lib.rs; then
             echo "FATAL: phase-2 still uses the RAM-doubling stock writer!"; exit 1
           fi
-          if grep -q "v13.17 cache MISS" LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
-            echo "OK: bindings v13.17 marker present"
+          if grep -q "v13.18 cache MISS" LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
+            echo "OK: bindings v13.18 marker present"
           else
-            echo "FATAL: bindings missing v13.17 marker!"; exit 1
+            echo "FATAL: bindings missing v13.18 marker!"; exit 1
           fi
           if grep -q "live.log" LSCR-package/unity-scene-repacker/bindings/src/lib.rs; then
-            echo "OK: live.log narration present (v13.17)"
+            echo "OK: live.log narration present (v13.18)"
           else
-            echo "FATAL: bindings missing live.log narration (v13.17)!"; exit 1
+            echo "FATAL: bindings missing live.log narration (v13.18)!"; exit 1
           fi
           if grep -q "phase2: heartbeat" LSCR-package/unity-scene-repacker/src/lib.rs && grep -q "phase2: entering scene" LSCR-package/unity-scene-repacker/src/lib.rs; then
-            echo "OK: v13.17 per-scene + 60s heartbeat breadcrumbs present"
+            echo "OK: per-scene + 60s heartbeat breadcrumbs present"
           else
-            echo "FATAL: v13.17 heartbeat/entering-scene breadcrumbs missing!"; exit 1
+            echo "FATAL: heartbeat/entering-scene breadcrumbs missing!"; exit 1
+          fi
+          if grep -q "remap_objects_par" LSCR-package/unity-scene-repacker/src/merge_serialized.rs && grep -q "num_threads(4)" LSCR-package/unity-scene-repacker/src/lib.rs; then
+            echo "OK: v13.18 four-thread rayon phase-2 present"
+          else
+            echo "FATAL: v13.18 four-thread phase-2 missing!"; exit 1
           fi
 
           echo "=== All source verifications passed ==="
