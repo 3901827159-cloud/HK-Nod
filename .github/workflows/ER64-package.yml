@@ -84,6 +84,14 @@ jobs:
           fi
           grep -n "EnsureGameData" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.14 APK self-extraction"; exit 1; }
           grep -n "assets/bin/Data/" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.14 apk data prefix"; exit 1; }
+          if [ "$(grep -c 'LSCR-DIAG-26' ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizer.cs)" -ge 3 ]; then
+            echo "OK: ER preload/hook/pool diagnostics present (26th gen)"
+          else
+            echo "FATAL: ER missing LSCR-DIAG-26 diagnostics (need >=3)!"; exit 1
+          fi
+          grep -n "VERBOSE_LOGGING = true" ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizer.cs || { echo "FATAL: ER missing forced replacement-pipeline logging (26th gen)"; exit 1; }
+          grep -n "LSCR-FSMEVENT-26" ER64-package/src/EnemyRandomizer/Mod/BattleStateMachine.cs || { echo "FATAL: ER missing LSCR-FSMEVENT-26 Android hook skip"; exit 1; }
+          grep -n "RuntimePlatform.Android" ER64-package/src/EnemyRandomizer/Mod/BattleStateMachine.cs || { echo "FATAL: BattleStateMachine missing Android platform guard"; exit 1; }
 
       - name: Compile with Roslyn (dotnet SDK csc)
         run: |
