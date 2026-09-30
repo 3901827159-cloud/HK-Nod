@@ -76,6 +76,8 @@ jobs:
           grep -n "fallback close" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.11 fallback close"; exit 1; }
           grep -n "pour-fill" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.11 pour-fill bar"; exit 1; }
           grep -n "KillPortBar" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.12 port-bar killer"; exit 1; }
+          grep -n "EnsureGameData" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.14 APK self-extraction"; exit 1; }
+          grep -n "assets/bin/Data/" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.14 apk data prefix"; exit 1; }
 
       - name: Compile with Roslyn (dotnet SDK csc)
         run: |
