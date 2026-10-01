@@ -93,7 +93,14 @@ jobs:
           grep -n "LSCR-FSMEVENT-26" ER64-package/src/EnemyRandomizer/Mod/BattleStateMachine.cs || { echo "FATAL: ER missing LSCR-FSMEVENT-26 Android hook skip"; exit 1; }
           grep -n "RuntimePlatform.Android" ER64-package/src/EnemyRandomizer/Mod/BattleStateMachine.cs || { echo "FATAL: BattleStateMachine missing Android platform guard"; exit 1; }
           grep -n "getAvailableBytes" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.16 free-space gate (StatFs)"; exit 1; }
-          grep -n "v3.16: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.16 ctor marker"; exit 1; }
+          grep -n "v3.17: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.17 ctor marker"; exit 1; }
+          grep -n "ensuregamedata_diag" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.17 on-disk diag trail"; exit 1; }
+          grep -n "v3.17: diag free=" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.17 free-space self-report"; exit 1; }
+          if grep -n "java.nio.file.Files" ER64-package/src/RepackBridge/RepackBridge64.cs; then
+            echo "FATAL: v3.14 reflection Files.copy is back (NoSuchMethodError on device 2026-10-01)!"; exit 1
+          else
+            echo "OK: stream-loop extraction (v3.17), reflection copy gone"
+          fi
           grep -n "rolled back to previous HK_Data" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.16 safe-swap rollback"; exit 1; }
           grep -n "extraction INVALID" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.16 pre-swap verification"; exit 1; }
           # v3.16: LogTarget must be wired before AddComponent's Awake runs --
