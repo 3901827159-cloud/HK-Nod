@@ -93,7 +93,9 @@ jobs:
           grep -n "LSCR-FSMEVENT-26" ER64-package/src/EnemyRandomizer/Mod/BattleStateMachine.cs || { echo "FATAL: ER missing LSCR-FSMEVENT-26 Android hook skip"; exit 1; }
           grep -n "RuntimePlatform.Android" ER64-package/src/EnemyRandomizer/Mod/BattleStateMachine.cs || { echo "FATAL: BattleStateMachine missing Android platform guard"; exit 1; }
           grep -n "getAvailableBytes" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.16 free-space gate (StatFs)"; exit 1; }
-          grep -n "v3.19: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.19 ctor marker"; exit 1; }
+          grep -n "v3.20: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.20 ctor marker"; exit 1; }
+          grep -n "quarantined" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.20 shadow quarantine"; exit 1; }
+          grep -n "FindGoodDataFile" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.20 healthy-copy search"; exit 1; }
           grep -n "v3.19: extraction verified" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.19 content verification"; exit 1; }
           grep -n "SIZE MISMATCH" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.19 declared-vs-disk size reconciliation"; exit 1; }
           grep -n "TAIL MISMATCH" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.19 tail digest reconciliation"; exit 1; }
