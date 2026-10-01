@@ -92,6 +92,19 @@ jobs:
           grep -n "VERBOSE_LOGGING = true" ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizer.cs || { echo "FATAL: ER missing forced replacement-pipeline logging (26th gen)"; exit 1; }
           grep -n "LSCR-FSMEVENT-26" ER64-package/src/EnemyRandomizer/Mod/BattleStateMachine.cs || { echo "FATAL: ER missing LSCR-FSMEVENT-26 Android hook skip"; exit 1; }
           grep -n "RuntimePlatform.Android" ER64-package/src/EnemyRandomizer/Mod/BattleStateMachine.cs || { echo "FATAL: BattleStateMachine missing Android platform guard"; exit 1; }
+          grep -n "getAvailableBytes" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.16 free-space gate (StatFs)"; exit 1; }
+          grep -n "v3.16: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.16 ctor marker"; exit 1; }
+          grep -n "rolled back to previous HK_Data" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.16 safe-swap rollback"; exit 1; }
+          grep -n "extraction INVALID" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.16 pre-swap verification"; exit 1; }
+          # v3.16: LogTarget must be wired before AddComponent's Awake runs --
+          # SetActive(false) has to appear BEFORE the AddComponent line in Boot.
+          INACTIVE=$(grep -n "go.SetActive(false)" ER64-package/src/RepackBridge/RepackBridge64.cs | head -1 | cut -d: -f1)
+          ADDCOMP=$(grep -n "AddComponent<PreloadUxBehaviour>" ER64-package/src/RepackBridge/RepackBridge64.cs | head -1 | cut -d: -f1)
+          if [ -n "$INACTIVE" ] && [ -n "$ADDCOMP" ] && [ "$INACTIVE" -lt "$ADDCOMP" ]; then
+            echo "OK: v3.16 log-before-Awake ordering (SetActive(false)@$INACTIVE < AddComponent@$ADDCOMP)"
+          else
+            echo "FATAL: bridge missing v3.16 SetActive-before-AddComponent ordering!"; exit 1
+          fi
 
       - name: Compile with Roslyn (dotnet SDK csc)
         run: |
