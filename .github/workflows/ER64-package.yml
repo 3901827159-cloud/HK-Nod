@@ -93,7 +93,9 @@ jobs:
           grep -n "LSCR-FSMEVENT-26" ER64-package/src/EnemyRandomizer/Mod/BattleStateMachine.cs || { echo "FATAL: ER missing LSCR-FSMEVENT-26 Android hook skip"; exit 1; }
           grep -n "RuntimePlatform.Android" ER64-package/src/EnemyRandomizer/Mod/BattleStateMachine.cs || { echo "FATAL: BattleStateMachine missing Android platform guard"; exit 1; }
           grep -n "getAvailableBytes" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.16 free-space gate (StatFs)"; exit 1; }
-          grep -n "v3.17: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.17 ctor marker"; exit 1; }
+          grep -n "v3.18: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.18 ctor marker"; exit 1; }
+          grep -n "corrupt cached bundle removed" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.18 cached-bundle self-heal"; exit 1; }
+          grep -n "HK_Data head BAD" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.18 tree-head naming"; exit 1; }
           grep -n "ensuregamedata_diag" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.17 on-disk diag trail"; exit 1; }
           grep -n "v3.17: diag free=" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.17 free-space self-report"; exit 1; }
           if grep -n "java.nio.file.Files" ER64-package/src/RepackBridge/RepackBridge64.cs; then
