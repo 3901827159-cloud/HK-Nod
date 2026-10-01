@@ -105,6 +105,15 @@ jobs:
           else
             echo "FATAL: bridge missing v3.16 SetActive-before-AddComponent ordering!"; exit 1
           fi
+          # 28th gen: display-time Chinese localisation (keys must stay English)
+          grep -n "LSCR-ZH-28" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs || { echo "FATAL: ER missing LSCR-ZH-28 localiser (28th gen)"; exit 1; }
+          grep -n "NotoSerifCJKSCRegular" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs || { echo "FATAL: localiser missing CJK font acquisition"; exit 1; }
+          grep -n "LateUpdate" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs || { echo "FATAL: localiser missing LateUpdate re-apply (Satchel resets labels in Update)"; exit 1; }
+          if grep -nE "GetOption\(|loadedLogics|\.Name =" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs; then
+            echo "FATAL: localiser must NEVER touch persisted keys (GetOption/loadedLogics/Name writes)!"; exit 1
+          else
+            echo "OK: localiser is display-only (no key writes)"
+          fi
 
       - name: Compile with Roslyn (dotnet SDK csc)
         run: |
