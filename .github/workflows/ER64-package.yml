@@ -101,11 +101,30 @@ jobs:
           fi
           grep -n "RuntimePlatform.Android" ER64-package/src/EnemyRandomizer/Mod/BattleStateMachine.cs || { echo "FATAL: BattleStateMachine missing Android platform guard"; exit 1; }
           grep -n "getAvailableBytes" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.16 free-space gate (StatFs)"; exit 1; }
-          grep -nE "v3\.(20|21): ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.20+ ctor marker"; exit 1; }
-          grep -n "v3.21: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.21 ctor marker"; exit 1; }
+          grep -nE "v3\.2[0-9]: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.20+ ctor marker"; exit 1; }
+          grep -n "v3.22: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.22 ctor marker"; exit 1; }
           grep -n "fuse fullscene engaged" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.21 fuse switch"; exit 1; }
           grep -n "showmenu probe self=" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.21 showmenu probe"; exit 1; }
           grep -n "TryFallbackCopy" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.21 cracked-window fallback reader"; exit 1; }
+          # 37th gen: re-stamp fast path (marker lost != apk updated; a needless
+          # 800MB re-extract also burns the bundle cache key via fresh mtime)
+          grep -n "marker re-stamped" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.22 re-stamp fast path"; exit 1; }
+          grep -n "re-stamp declined" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.22 re-stamp decline log (silent 800MB copy is back)"; exit 1; }
+          # 37th gen v3.23: hollow-stub storage reclaim (22MB bundle built -> the
+          # 800MB data file becomes a sparse shell; fingerprint = size + head/tail
+          # 1MiB probes, so the cache key survives; MISS auto-restores, one-strike veto)
+          grep -n "stub-mode boot" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.23 stub-mode boot path"; exit 1; }
+          grep -n "internal static bool MakeStubFile" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.23 MakeStubFile (unit-tested sparse shell builder)"; exit 1; }
+          grep -n "InvalidateStub" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.23 stub invalidation (MISS on a shell must auto-restore)"; exit 1; }
+          grep -n "lscr_stub_off" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.23 one-strike veto file"; exit 1; }
+          # 37th gen: the twin download-style bars are gone by user order; the
+          # red failure card must remain (silent preload failure is worse).
+          if grep -n "DrawBar" ER64-package/src/RepackBridge/RepackBridge64.cs; then
+            echo "FATAL: overlay bars are back (user removed them in the 37th gen)!"; exit 1
+          else
+            echo "OK: overlay bars removed (failure card only)"
+          fi
+          grep -n "游戏数据抽取失败" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: overlay lost the red failure card"; exit 1; }
           grep -n "quarantined" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.20 shadow quarantine"; exit 1; }
           grep -n "FindGoodDataFile" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.20 healthy-copy search"; exit 1; }
           grep -n "v3.19: extraction verified" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.19 content verification"; exit 1; }
@@ -135,6 +154,10 @@ jobs:
           fi
           # 28th gen: display-time Chinese localisation (keys must stay English)
           grep -n "LSCR-ZH-28" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs || { echo "FATAL: ER missing LSCR-ZH-28 localiser (28th gen)"; exit 1; }
+          # 37th gen: enemy-name display translation + instance-suffix base matching
+          grep -n "LSCR-ZH-37" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs || { echo "FATAL: ER missing LSCR-ZH-37 enemy-name localisation (37th gen)"; exit 1; }
+          grep -n "internal static string BaseKey" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs || { echo "FATAL: localiser missing BaseKey suffix stripper"; exit 1; }
+          grep -n '"Zoteling"' ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs || { echo "FATAL: enemy dictionary sample entry missing (Zoteling)"; exit 1; }
           grep -n "NotoSerifCJKSCRegular" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs || { echo "FATAL: localiser missing CJK font acquisition"; exit 1; }
           grep -n "LateUpdate" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs || { echo "FATAL: localiser missing LateUpdate re-apply (Satchel resets labels in Update)"; exit 1; }
           if grep -nE "GetOption\(|loadedLogics|\.Name =" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs; then
