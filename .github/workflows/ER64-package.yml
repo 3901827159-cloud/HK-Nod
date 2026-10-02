@@ -91,9 +91,21 @@ jobs:
           fi
           grep -n "VERBOSE_LOGGING = true" ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizer.cs || { echo "FATAL: ER missing forced replacement-pipeline logging (26th gen)"; exit 1; }
           grep -n "LSCR-FSMEVENT-26" ER64-package/src/EnemyRandomizer/Mod/BattleStateMachine.cs || { echo "FATAL: ER missing LSCR-FSMEVENT-26 Android hook skip"; exit 1; }
+          grep -n "LSCR-FSMEVENT-37" ER64-package/src/EnemyRandomizerDB/Library/BattleStateMachine.cs || { echo "FATAL: DB BattleStateMachine (the copy that ACTUALLY COMPILES) missing LSCR-FSMEVENT-37 unconditional Event-hook skip - the 26-gen guard lived in the build.sh-EXCLUDED Mod copy and never shipped (2816 swallowed FSM events on device 2026-10-02)"; exit 1; }
+          if grep -n "Event_FsmEvent +=\|Event_FsmEventTarget_string +=" ER64-package/src/EnemyRandomizerDB/Library/BattleStateMachine.cs; then
+            echo "FATAL: DB BattleStateMachine re-armed the Fsm.Event hooks (port resolver lands the 1-arg detour on the 2-arg address -> marshalling flood + swallowed events)!"; exit 1
+          fi
+          grep -n "LSCR-DEADHOOK-37" ER64-package/src/EnemyRandomizerDB/Library/Spawners/SpawnedObjectControl.cs || { echo "FATAL: SpawnedObjectControl missing LSCR-DEADHOOK-37 dead-hook skip (EmitCorpse/SetConvoTitle/Language.Get have no AOT bridges on this port; 1353 failed per-spawn attempts + WARN flood)"; exit 1; }
+          if grep -n "EmitCorpse +=\|Get_string_string +=\|SetConvoTitle +=" ER64-package/src/EnemyRandomizerDB/Library/Spawners/SpawnedObjectControl.cs; then
+            echo "FATAL: SpawnedObjectControl re-armed dead hooks (no AOT bridge exists on this port -> per-spawn WARN flood)!"; exit 1
+          fi
           grep -n "RuntimePlatform.Android" ER64-package/src/EnemyRandomizer/Mod/BattleStateMachine.cs || { echo "FATAL: BattleStateMachine missing Android platform guard"; exit 1; }
           grep -n "getAvailableBytes" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.16 free-space gate (StatFs)"; exit 1; }
-          grep -n "v3.20: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.20 ctor marker"; exit 1; }
+          grep -nE "v3\.(20|21): ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.20+ ctor marker"; exit 1; }
+          grep -n "v3.21: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.21 ctor marker"; exit 1; }
+          grep -n "fuse fullscene engaged" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.21 fuse switch"; exit 1; }
+          grep -n "showmenu probe self=" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.21 showmenu probe"; exit 1; }
+          grep -n "TryFallbackCopy" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.21 cracked-window fallback reader"; exit 1; }
           grep -n "quarantined" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.20 shadow quarantine"; exit 1; }
           grep -n "FindGoodDataFile" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.20 healthy-copy search"; exit 1; }
           grep -n "v3.19: extraction verified" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.19 content verification"; exit 1; }
