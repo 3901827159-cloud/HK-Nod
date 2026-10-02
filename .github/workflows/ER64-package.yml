@@ -104,7 +104,12 @@ jobs:
           grep -n "RuntimePlatform.Android" ER64-package/src/EnemyRandomizer/Mod/BattleStateMachine.cs || { echo "FATAL: BattleStateMachine missing Android platform guard"; exit 1; }
           grep -n "getAvailableBytes" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.16 free-space gate (StatFs)"; exit 1; }
           grep -nE "v3\.2[0-9]: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.20+ ctor marker"; exit 1; }
-          grep -n "v3.25: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.25 ctor marker"; exit 1; }
+          grep -n "v3.26: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.26 ctor marker"; exit 1; }
+          # 40th gen: the refresher restores the display-sync side job of the
+          # evacuated Satchel handler (cycling options changed value but never
+          # repainted - "locked options" device report) with zero detours
+          grep -n "internal sealed class SatchelMenuRefresher" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.26 SatchelMenuRefresher"; exit 1; }
+          grep -n "menu refresher first reveal-refresh done" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.26 refresher proof line"; exit 1; }
           grep -n "fuse fullscene engaged" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.21 fuse switch"; exit 1; }
           # 39th gen: the probe was RETIRED and the gate FLIPPED. On-device
           # bisection landed the minimal repro: this dll ALONE (no .so, no other
