@@ -104,12 +104,13 @@ jobs:
           grep -n "RuntimePlatform.Android" ER64-package/src/EnemyRandomizer/Mod/BattleStateMachine.cs || { echo "FATAL: BattleStateMachine missing Android platform guard"; exit 1; }
           grep -n "getAvailableBytes" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.16 free-space gate (StatFs)"; exit 1; }
           grep -nE "v3\.2[0-9]: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.20+ ctor marker"; exit 1; }
-          grep -n "v3.22: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.22 ctor marker"; exit 1; }
+          grep -n "v3.24: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.24 ctor marker"; exit 1; }
           grep -n "fuse fullscene engaged" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.21 fuse switch"; exit 1; }
           grep -n "showmenu probe self=" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.21 showmenu probe"; exit 1; }
           grep -n "TryFallbackCopy" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.21 cracked-window fallback reader"; exit 1; }
-          # 37th gen: re-stamp fast path (marker lost != apk updated; a needless
-          # 800MB re-extract also burns the bundle cache key via fresh mtime)
+          # 37th gen: re-stamp fast path (a lost extraction marker != an updated
+          # apk; the cache fingerprint probes content not mtime, so what the
+          # fast path saves is the 800MB copy time, not the bundle key)
           grep -n "marker re-stamped" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.22 re-stamp fast path"; exit 1; }
           grep -n "re-stamp declined" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.22 re-stamp decline log (silent 800MB copy is back)"; exit 1; }
           # 37th gen v3.23: hollow-stub storage reclaim (22MB bundle built -> the
@@ -119,6 +120,36 @@ jobs:
           grep -n "internal static bool MakeStubFile" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.23 MakeStubFile (unit-tested sparse shell builder)"; exit 1; }
           grep -n "InvalidateStub" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.23 stub invalidation (MISS on a shell must auto-restore)"; exit 1; }
           grep -n "lscr_stub_off" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.23 one-strike veto file"; exit 1; }
+          # 38th gen: stub skips must name themselves (device 2026-10-02: healthy
+          # HIT boot, green fired, zero v3.23 lines - a stale export_diag.txt had
+          # pinned _failed=true and silently vetoed the reclaim forever)
+          grep -n "v3.24: stub skipped" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.24 stub skip-reason logging"; exit 1; }
+          if grep -n "if (_failed || _dataFailMsg != null) return;" ER64-package/src/RepackBridge/RepackBridge64.cs; then
+            echo "FATAL: stub still gated on stale-prone _failed (existence of any export_diag blocks reclaim)!"; exit 1
+          fi
+          # 38th gen: the menu build guard is back (device 2026-10-02 freeze -
+          # every GetMenuScreen rebuilt the tree and re-subscribed ShowMenu,
+          # tearing the combined detour chain; InvokeOrig then hung on healthy
+          # args: probe self=ok menu=OptionsMenuScreen -> silence)
+          grep -n "LSCR-MENUGUARD-38" ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizerMenu.cs || { echo "FATAL: ER menu missing LSCR-MENUGUARD-38 build guard (38th gen freeze fix)"; exit 1; }
+          grep -n "^            if (RootMenuObject == null)" ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizerMenu.cs || { echo "FATAL: menu build guard not active"; exit 1; }
+          if grep -n "//if (RootMenuObject == null)" ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizerMenu.cs; then
+            echo "FATAL: menu build guard commented out again (38th gen freeze fix reverted)!"; exit 1
+          fi
+          # 38th gen: freeze recon extension. The A/B pair (healthy 015748Z vs
+          # frozen 064617Z: IDENTICAL churn counts, identical probe sequence)
+          # disproved the rebuild-tear diagnosis; lifecycle saves logged DURING
+          # the freeze prove the managed thread stays alive past InvokeOrig.
+          # So: bracket the native call (post-orig receipt) and witness menu
+          # scene loads (async-stall vs render-layer triage in one round).
+          # v3.24 also freshness-gates _failed itself: a stale export_diag.txt
+          # used to show the red pack-failed card on every healthy HIT boot
+          grep -n "only a FRESH export_diag" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.24 _failed freshness gate"; exit 1; }
+          if grep -n 'export_diag.txt"))) _failed = true;' ER64-package/src/RepackBridge/RepackBridge64.cs; then
+            echo "FATAL: stale-blind _failed assignment is back (existence-only check)!"; exit 1
+          fi
+          grep -n "probe post-orig returned" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.24 post-orig receipt"; exit 1; }
+          grep -n "v3.24: scene loaded: " ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.24 scene-load witness"; exit 1; }
           # 37th gen: the twin download-style bars are gone by user order; the
           # red failure card must remain (silent preload failure is worse).
           if grep -n "DrawBar" ER64-package/src/RepackBridge/RepackBridge64.cs; then
