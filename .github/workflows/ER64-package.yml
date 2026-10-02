@@ -104,9 +104,25 @@ jobs:
           grep -n "RuntimePlatform.Android" ER64-package/src/EnemyRandomizer/Mod/BattleStateMachine.cs || { echo "FATAL: BattleStateMachine missing Android platform guard"; exit 1; }
           grep -n "getAvailableBytes" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.16 free-space gate (StatFs)"; exit 1; }
           grep -nE "v3\.2[0-9]: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.20+ ctor marker"; exit 1; }
-          grep -n "v3.24: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.24 ctor marker"; exit 1; }
+          grep -n "v3.25: ctor" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.25 ctor marker"; exit 1; }
           grep -n "fuse fullscene engaged" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.21 fuse switch"; exit 1; }
-          grep -n "showmenu probe self=" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.21 showmenu probe"; exit 1; }
+          # 39th gen: the probe was RETIRED and the gate FLIPPED. On-device
+          # bisection landed the minimal repro: this dll ALONE (no .so, no other
+          # mods) with one log-only On.UIManager.ShowMenu subscriber stalls menu
+          # transitions - the port's shipped DetourBridge boxes the call through
+          # the interpreter and ShowMenu returns IEnumerator; the transition
+          # iterator comes back silently dead (zero follow-up dispatches/scene
+          # loads, thread alive). Void detours unaffected (2664 clean
+          # PlayMakerFSM.OnEnable dispatches in the frozen session itself).
+          # v3.25 answer: never subscribe + evacuate every other subscriber
+          # (ShowMenuDetourWatch -> the API's own OnRemove path -> detour off).
+          if grep -n "showmenu probe self=\|On.UIManager.ShowMenu +=" ER64-package/src/RepackBridge/RepackBridge64.cs; then
+            echo "FATAL: bridge arms the ShowMenu detour again (39th gen retired it - ANY subscriber reproduces the menu stall)!"; exit 1
+          fi
+          grep -n "internal sealed class ShowMenuDetourWatch" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.25 ShowMenuDetourWatch"; exit 1; }
+          grep -n "ShowMenu detour watch armed" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.25 watch boot line"; exit 1; }
+          grep -n "ShowMenu detour disarmed" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.25 evacuation log"; exit 1; }
+          grep -n "LSCR-SHOWMENU-39" ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizerMenu.cs || { echo "FATAL: ER menu missing LSCR-SHOWMENU-39 Android gate (button-fix must not arm the ShowMenu detour)"; exit 1; }
           grep -n "TryFallbackCopy" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.21 cracked-window fallback reader"; exit 1; }
           # 37th gen: re-stamp fast path (a lost extraction marker != an updated
           # apk; the cache fingerprint probes content not mtime, so what the
@@ -136,19 +152,15 @@ jobs:
           if grep -n "//if (RootMenuObject == null)" ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizerMenu.cs; then
             echo "FATAL: menu build guard commented out again (38th gen freeze fix reverted)!"; exit 1
           fi
-          # 38th gen: freeze recon extension. The A/B pair (healthy 015748Z vs
-          # frozen 064617Z: IDENTICAL churn counts, identical probe sequence)
-          # disproved the rebuild-tear diagnosis; lifecycle saves logged DURING
-          # the freeze prove the managed thread stays alive past InvokeOrig.
-          # So: bracket the native call (post-orig receipt) and witness menu
-          # scene loads (async-stall vs render-layer triage in one round).
+          # 38th gen: freeze recon (scene witness). The post-orig receipt rode
+          # the probe and retired with it in the 39th gen; the witness stays -
+          # a working menu now PROVES itself via "scene loaded: <Screen>" lines.
           # v3.24 also freshness-gates _failed itself: a stale export_diag.txt
           # used to show the red pack-failed card on every healthy HIT boot
           grep -n "only a FRESH export_diag" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.24 _failed freshness gate"; exit 1; }
           if grep -n 'export_diag.txt"))) _failed = true;' ER64-package/src/RepackBridge/RepackBridge64.cs; then
             echo "FATAL: stale-blind _failed assignment is back (existence-only check)!"; exit 1
           fi
-          grep -n "probe post-orig returned" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.24 post-orig receipt"; exit 1; }
           grep -n "v3.24: scene loaded: " ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.24 scene-load witness"; exit 1; }
           # 37th gen: the twin download-style bars are gone by user order; the
           # red failure card must remain (silent preload failure is worse).
