@@ -211,6 +211,30 @@ jobs:
           grep -n '"Zoteling"' ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs || { echo "FATAL: enemy dictionary sample entry missing (Zoteling)"; exit 1; }
           grep -n "NotoSerifCJKSCRegular" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs || { echo "FATAL: localiser missing CJK font acquisition"; exit 1; }
           grep -n "LateUpdate" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs || { echo "FATAL: localiser missing LateUpdate re-apply (Satchel resets labels in Update)"; exit 1; }
+          # 41st gen: localiser value re-key + menu-gated sweep. Device report:
+          # cycling options looked LOCKED (click changed the value underneath,
+          # display never moved, restart revealed it) because LateUpdate force-
+          # restored the STALE stored key's translation over the new English
+          # value; and every freshly revealed screen flashed English for up to
+          # 0.4s (constant FindObjectsOfType sweep - also a gameplay hitch source).
+          grep -n "LSCR-ZH-41" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs || { echo "FATAL: localiser missing LSCR-ZH-41 value re-key (locked-options fix)"; exit 1; }
+          grep -n "AnyModMenuVisible" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs || { echo "FATAL: localiser missing LSCR-ZH-41 menu-visibility sweep gate"; exit 1; }
+          if grep -n "_map\[t\] : t.text" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs; then
+            echo "FATAL: stale-key force-restore is back (LSCR-ZH-41 removed it - cycling options would look locked again)!"; exit 1
+          fi
+          # 42nd gen: zero-frame Chinese - build-event translation. User asked
+          # why not "translate once, permanently": Satchel re-stamps English
+          # from the element fields on EVERY refresh, those fields double as
+          # lookup/persist keys (untouchable), and text-setter hooks would be
+          # detours (the frozen-menu disease). Answer: subscribe the PLAIN C#
+          # Menu.OnBuilt event and translate the whole screen tree inside the
+          # build call chain - Chinese before the first rendered frame.
+          grep -n "LSCR-ZH-42" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs || { echo "FATAL: localiser missing LSCR-ZH-42 build-event zero-frame translation"; exit 1; }
+          grep -n "TranslateScreen" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs || { echo "FATAL: localiser missing LSCR-ZH-42 TranslateScreen pass"; exit 1; }
+          grep -n "ZhLocalizerBehaviour.AttachRegistry" ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizerMenu.cs || { echo "FATAL: ER menu missing LSCR-ZH-42 AttachRegistry pre-build wiring (the first build would miss the event)"; exit 1; }
+          if grep -n "On\.UIManager\." ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs; then
+            echo "FATAL: localiser must stay detour-free (LSCR-ZH-42 uses plain C# events only)!"; exit 1
+          fi
           if grep -nE "GetOption\(|loadedLogics|\.Name =" ER64-package/src/EnemyRandomizer/Mod/ZhMenuLocalizer.cs; then
             echo "FATAL: localiser must NEVER touch persisted keys (GetOption/loadedLogics/Name writes)!"; exit 1
           else
