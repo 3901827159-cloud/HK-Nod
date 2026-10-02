@@ -122,6 +122,7 @@ jobs:
           grep -n "internal sealed class ShowMenuDetourWatch" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.25 ShowMenuDetourWatch"; exit 1; }
           grep -n "ShowMenu detour watch armed" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.25 watch boot line"; exit 1; }
           grep -n "ShowMenu detour disarmed" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.25 evacuation log"; exit 1; }
+          grep -n "keephooks.txt" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.25 keephooks opt-out fuse (future mods may need their ShowMenu hooks)"; exit 1; }
           grep -n "LSCR-SHOWMENU-39" ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizerMenu.cs || { echo "FATAL: ER menu missing LSCR-SHOWMENU-39 Android gate (button-fix must not arm the ShowMenu detour)"; exit 1; }
           grep -n "TryFallbackCopy" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge missing v3.21 cracked-window fallback reader"; exit 1; }
           # 37th gen: re-stamp fast path (a lost extraction marker != an updated
