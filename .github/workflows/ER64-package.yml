@@ -74,7 +74,9 @@ jobs:
           grep -n "layout top:" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing layout stethoscope (gen-16+)"; exit 1; }
           grep -n "_cacheReadyAt" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.11 fallback-close timer"; exit 1; }
           grep -n "fallback close" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.11 fallback close"; exit 1; }
-          grep -n "pour-fill" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.11 pour-fill bar"; exit 1; }
+          # (the v3.11 pour-fill bar gate lived here; the bars were removed by
+          # user order in the 37th gen - the DrawBar-negative gate below now
+          # guards the other direction)
           grep -n "KillPortBar" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.12 port-bar killer"; exit 1; }
           grep -n "convfix" ER64-package/src/RepackBridge/RepackBridge64.cs || { echo "FATAL: bridge mod missing v3.15 convfix handoff"; exit 1; }
           if [ "$(grep -c 'LSCR-NULLGUARD-24' ER64-package/src/EnemyRandomizer/Mod/EnemyRandomizer.cs)" -ge 4 ]; then
