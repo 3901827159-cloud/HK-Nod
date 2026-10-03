@@ -1,0 +1,122 @@
+name: Build Randomizer 4 dlls (64-bit port, Phase 1 compile-parity)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-rando64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify source package exists
+        run: |
+          if [ ! -f "RANDO64-package.zip" ]; then
+            echo "ERROR: RANDO64-package.zip not found in repository root!"
+            echo "Please upload RANDO64-package.zip to the repo root."
+            ls -la *.zip 2>/dev/null || echo "No ZIP files found."
+            exit 1
+          fi
+          echo "OK: Found RANDO64-package.zip ($(stat -c%s RANDO64-package.zip) bytes)"
+          echo "MD5: $(md5sum RANDO64-package.zip | cut -d' ' -f1)"
+
+      - name: Unzip source package
+        run: |
+          rm -rf RANDO64-package
+          unzip -q -o "RANDO64-package.zip" -d .
+          echo "ZIP extracted. Contents:"
+          ls -la RANDO64-package/
+          echo "=== src cs count (expect 663) ==="
+          find RANDO64-package/src -name '*.cs' | wc -l
+
+      - name: Provide refs from ER64 package (RANDO64 zip ships without the 40MB refs)
+        run: |
+          if [ -d "RANDO64-package/refs" ] && [ -n "$(ls -A RANDO64-package/refs/*.dll 2>/dev/null)" ]; then
+            echo "OK: refs bundled in RANDO64-package.zip"
+          else
+            if [ ! -f "ER64-package.zip" ]; then
+              echo "FATAL: RANDO64-package.zip has no refs/ and ER64-package.zip is absent."
+              echo "本包不含 refs（与 ER64 字节相同的 40MB 游戏库）。请把 ER64-package.zip 也放到仓库根目录。"
+              exit 1
+            fi
+            rm -rf ER64-package
+            unzip -q -o "ER64-package.zip" -d .
+            if [ ! -d "ER64-package/refs" ]; then echo "FATAL: ER64-package.zip 里没有 refs/"; exit 1; fi
+            cp -r ER64-package/refs RANDO64-package/refs
+            echo "OK: refs copied from ER64-package ($(ls RANDO64-package/refs/*.dll | wc -l) dll)"
+          fi
+
+      - name: Verify package structure
+        run: |
+          cd RANDO64-package
+          # 五工程目录
+          for p in RandomizerCore RandomizerCore.Json ItemChanger MenuChanger RandomizerMod; do
+            [ -d "src/$p" ] || { echo "FATAL: src/$p missing"; exit 1; }
+            echo "src/$p: $(find src/$p -name '*.cs' | wc -l) cs"
+          done
+          # 构建脚本 / 垫片 / 全局引用
+          [ -f build.sh ] || { echo "FATAL: build.sh missing"; exit 1; }
+          [ -f polyfill/Polyfills.cs ] || { echo "FATAL: polyfill missing"; exit 1; }
+          for u in rc rcj ic mc rm; do
+            [ -f "usings/$u.usings.cs" ] || { echo "FATAL: usings/$u.usings.cs missing"; exit 1; }
+          done
+          # 垫片必含五个 internal 特性，且【绝不含】IsExternalInit（refs 已 public 提供，重复=CS0433）
+          for t in RequiredMemberAttribute SetsRequiredMembersAttribute CompilerFeatureRequiredAttribute NotNullWhenAttribute MaybeNullWhenAttribute; do
+            grep -q "class $t" polyfill/Polyfills.cs || { echo "FATAL: polyfill missing $t"; exit 1; }
+          done
+          if grep -q "class IsExternalInit" polyfill/Polyfills.cs; then
+            echo "FATAL: polyfill must NOT define IsExternalInit (public in Assembly-CSharp.dll -> CS0433)!"; exit 1
+          fi
+          echo "OK: polyfill complete and IsExternalInit-free"
+          # 关键引用库（refs 由上一步提供）
+          echo "=== refs dll count (expect 84) ==="
+          ls refs/*.dll | wc -l
+          for r in Assembly-CSharp.dll MMHOOK_Assembly-CSharp.dll MMHOOK_PlayMaker.dll MonoMod.Utils.dll Mono.Cecil.dll Newtonsoft.Json.dll PlayMaker.dll UnityEngine.UI.dll UnityEngine.IMGUIModule.dll; do
+            [ -f "refs/$r" ] || { echo "FATAL: refs/$r missing"; exit 1; }
+          done
+          echo "OK: structure + refs verified"
+          # build.sh 五段链式编译齐全
+          for step in "out/RandomizerCore.dll" "out/RandomizerCore.Json.dll" "out/ItemChanger.dll" "out/MenuChanger.dll" "out/RandomizerMod.dll"; do
+            grep -q "$step" build.sh || { echo "FATAL: build.sh missing compile step for $step"; exit 1; }
+          done
+          grep -q "mk_res" build.sh || { echo "FATAL: build.sh missing embedded-resource generation"; exit 1; }
+          echo "OK: build.sh chain complete"
+
+      - name: Compile with Roslyn (dotnet SDK csc, 5-project chain)
+        run: |
+          cd RANDO64-package
+          bash build.sh 2>&1 | tee /tmp/build.log
+          echo "=== warnings/errors summary ==="
+          grep -iE "error CS|warning CS" /tmp/build.log | sed 's/.*\(error CS[0-9]*\|warning CS[0-9]*\).*/\1/' | sort | uniq -c | sort -rn | head -30 || true
+
+      - name: Verify output dlls + embedded resources
+        run: |
+          cd RANDO64-package
+          for d in RandomizerCore RandomizerCore.Json ItemChanger MenuChanger RandomizerMod; do
+            [ -f "out/$d.dll" ] || { echo "FATAL: out/$d.dll not produced"; exit 1; }
+            echo "out/$d.dll : $(stat -c%s out/$d.dll) bytes"
+          done
+          # 嵌入资源必须真的进了 dll（manifest 名与源码 GetManifestResourceStream 期望对齐）
+          echo "=== ItemChanger 资源名抽查 ==="
+          for n in "ItemChanger.Resources.items.json" "ItemChanger.Resources.locations.json" "ItemChanger.Resources.language.xml"; do
+            strings out/ItemChanger.dll | grep -q "$n" || { echo "FATAL: IC missing embedded resource $n"; exit 1; }
+            echo "  OK $n"
+          done
+          echo "=== RandomizerMod 资源名抽查 ==="
+          for n in "RandomizerMod.Resources.entries.txt" "RandomizerMod.Resources.Logic.state.json" "RandomizerMod.Resources.Data.items.json"; do
+            strings out/RandomizerMod.dll | grep -q "$n" || { echo "FATAL: RM missing embedded resource $n"; exit 1; }
+            echo "  OK $n"
+          done
+          echo "=== 版本串抽查 (RM 应显示 4.1.6) ==="
+          strings -el out/RandomizerMod.dll | grep -i "4.1.6" | head -1 || echo "(版本号在元数据，非字符串堆，可忽略)"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RANDO64-dlls
+          path: |
+            RANDO64-package/out/RandomizerCore.dll
+            RANDO64-package/out/RandomizerCore.Json.dll
+            RANDO64-package/out/ItemChanger.dll
+            RANDO64-package/out/MenuChanger.dll
+            RANDO64-package/out/RandomizerMod.dll
