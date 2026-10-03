@@ -9,6 +9,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Pin modern .NET SDK (C# 11+ — RandomizerCore uses required members)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
       - name: Verify source package exists
         run: |
           if [ ! -f "RANDO64-package.zip" ]; then
@@ -85,9 +90,23 @@ jobs:
       - name: Compile with Roslyn (dotnet SDK csc, 5-project chain)
         run: |
           cd RANDO64-package
+          set +e
           bash build.sh 2>&1 | tee /tmp/build.log
-          echo "=== warnings/errors summary ==="
-          grep -iE "error CS|warning CS" /tmp/build.log | sed 's/.*\(error CS[0-9]*\|warning CS[0-9]*\).*/\1/' | sort | uniq -c | sort -rn | head -30 || true
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          echo
+          echo "==================== compiler errors (error CS) ===================="
+          grep -nE "error CS" /tmp/build.log | head -50 || echo "(no 'error CS' lines — failure may be a script/tooling error, see tail below)"
+          echo "==================== error/warning code summary ===================="
+          grep -oiE "error CS[0-9]+|warning CS[0-9]+" /tmp/build.log | sort | uniq -c | sort -rn | head -30 || true
+          echo "==================== last 50 lines of build output ===================="
+          tail -50 /tmp/build.log
+          echo "====================================================================="
+          if [ "$STATUS" -ne 0 ]; then
+            echo "BUILD FAILED: build.sh exited $STATUS. The real cause is in the 'error CS' lines above."
+            exit "$STATUS"
+          fi
+          echo "build.sh completed successfully."
 
       - name: Verify output dlls + embedded resources
         run: |
